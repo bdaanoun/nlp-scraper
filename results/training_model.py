@@ -1,33 +1,43 @@
 import os
 import pickle
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
-from sklearn.datasets import load_files
-from sklearn.model_selection import train_test_split, learning_curve
+from sklearn.model_selection import learning_curve
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score
+from sklearn.preprocessing import LabelEncoder
 
-# Load BBC News dataset
-# using dataset from: http://mlg.ucd.ie/datasets/bbc.html
-DATASET_PATH = "data/bbc"
-MODEL_PATH   = "topic_classifier.pkl"
-CURVES_PATH  = "results/learning_curves.png"
+TRAIN_CSV   = "data/bbc_news_train.csv"
+TEST_CSV    = "data/bbc_news_tests.csv"
+MODEL_PATH  = "topic_classifier.pkl"
+CURVES_PATH = "results/learning_curves.png"
 
+# Load data 
 print("Loading dataset...")
-dataset = load_files(DATASET_PATH, encoding="utf-8", decode_error="replace")
-X, y    = dataset.data, dataset.target
-labels  = dataset.target_names        # ['business','entertainment','politics','sport','tech']
-print(f"  {len(X)} documents, {len(labels)} classes: {labels}")
+train_df = pd.read_csv(TRAIN_CSV)
+test_df  = pd.read_csv(TEST_CSV)
 
-# Train / test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+TEXT_COL  = "Text"
+LABEL_COL = "Category"
 
-# Build pipeline
+X_train, y_train_raw = train_df[TEXT_COL].tolist(), train_df[LABEL_COL].tolist()
+X_test,  y_test_raw  = test_df[TEXT_COL].tolist(),  test_df[LABEL_COL].tolist()
+
+# Encode string labels to > integers
+le = LabelEncoder()
+le.fit(y_train_raw)
+y_train = le.transform(y_train_raw)
+y_test  = le.transform(y_test_raw)
+labels  = list(le.classes_)
+
+print(f"Train: {len(X_train)} docs | Test: {len(X_test)} docs")
+print(f"Classes: {labels}")
+
+# Build & train pipeline
 pipeline = Pipeline([
     ("tfidf", TfidfVectorizer(
         strip_accents="unicode",
@@ -50,8 +60,8 @@ print("\nTraining model...")
 pipeline.fit(X_train, y_train)
 
 # Evaluate
-y_pred    = pipeline.predict(X_test)
-test_acc  = accuracy_score(y_test, y_pred)
+y_pred   = pipeline.predict(X_test)
+test_acc = accuracy_score(y_test, y_pred)
 print(f"\nTest accuracy: {test_acc * 100:.2f}%")
 print("\nClassification report:")
 print(classification_report(y_test, y_pred, target_names=labels))
@@ -60,14 +70,18 @@ assert test_acc >= 0.95, f"Accuracy {test_acc:.2%} is below the 95% threshold!"
 
 # Save model
 with open(MODEL_PATH, "wb") as f:
-    pickle.dump({"pipeline": pipeline, "labels": labels}, f)
-print(f"\nModel saved {MODEL_PATH}")
+    pickle.dump({"pipeline": pipeline, "labels": labels, "label_encoder": le}, f)
+print(f"\nModel saved : {MODEL_PATH}")
 
 # Learning curves
-print("\nComputing learning curves (this takes a minute)...")
+# Use all data combined for the curve
+X_all = X_train + X_test
+y_all = np.concatenate([y_train, y_test])
+
+print("\nComputing learning curves...")
 train_sizes, train_scores, val_scores = learning_curve(
     pipeline,
-    X, y,
+    X_all, y_all,
     cv=5,
     scoring="accuracy",
     train_sizes=np.linspace(0.1, 1.0, 10),
@@ -95,4 +109,4 @@ plt.tight_layout()
 
 os.makedirs("results", exist_ok=True)
 fig.savefig(CURVES_PATH, dpi=150)
-print(f"Learning curves saved {CURVES_PATH}")
+print(f"Learning curves saved : {CURVES_PATH}")
