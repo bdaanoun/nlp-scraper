@@ -9,6 +9,9 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
+import nltk
+nltk.download('vader_lexicon')
+
 nlp = spacy.load("en_core_web_sm")
 
 DB_PATH        = "data/news.db"

@@ -161,4 +161,4 @@ def main():
     print(f"\nDone! Total articles in DB: {count_articles()}")
 
 if __name__ == "__main__":
-    parse_rss()
+    main()

@@ -21,11 +21,8 @@ print("Loading dataset...")
 train_df = pd.read_csv(TRAIN_CSV)
 test_df  = pd.read_csv(TEST_CSV)
 
-TEXT_COL  = "Text"
-LABEL_COL = "Category"
-
-X_train, y_train_raw = train_df[TEXT_COL].tolist(), train_df[LABEL_COL].tolist()
-X_test,  y_test_raw  = test_df[TEXT_COL].tolist(),  test_df[LABEL_COL].tolist()
+X_train, y_train_raw = train_df["Text"].tolist(), train_df["Category"].tolist()
+X_test,  y_test_raw  = test_df["Text"].tolist(),  test_df["Category"].tolist()
 
 # Encode string labels to > integers
 le = LabelEncoder()
